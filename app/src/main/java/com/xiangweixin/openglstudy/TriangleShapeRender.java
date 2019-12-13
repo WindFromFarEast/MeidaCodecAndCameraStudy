@@ -2,6 +2,7 @@ package com.xiangweixin.openglstudy;
 
 import android.content.Context;
 import android.opengl.GLES20;
+import android.opengl.Matrix;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -25,6 +26,7 @@ public class TriangleShapeRender extends ViewGLRender {
             -0.5f, -0.5f, 0.0f, //bottom left
             0.5f, -0.5f, 0.0f, //bottom right
     };
+
     //在三角形的顶点坐标数组中，一个顶点需要三个值(x,y,z)来描述其位置，所以需要3个偏移量
     private static final int COORDS_PER_VERTEX = 3;
     private static final int COORDS_PER_COLOR = 0;
@@ -39,6 +41,9 @@ public class TriangleShapeRender extends ViewGLRender {
 
     private static float TRIANGLE_COLOR[] = {1.0f, 1.0f, 1.0f, 1.0f};
     private static final int VERTEX_COUNT = TRIANGLE_COORDS.length / TOTAL_COMPONENT_COUNT;
+
+    private static final String U_MATRIX = "u_Matrix";
+    private int uMatrix;
 
     public TriangleShapeRender(Context context) {
         this.mContext = context;
@@ -66,32 +71,50 @@ public class TriangleShapeRender extends ViewGLRender {
         GLES20.glAttachShader(mProgramObjectId, fragmentShaderObjectId);
         //Link Program
         GLES20.glLinkProgram(mProgramObjectId);
-    }
-
-    @Override
-    public void onDrawFrame(GL10 gl10) {
-        super.onDrawFrame(gl10);
         GLES20.glUseProgram(mProgramObjectId);
-
         //获取我们定义的Position变量的handle
-        int vPosition = GLES20.glGetAttribLocation(mProgramObjectId, A_POSITION);
-        //启用我们自定义的Position
-        GLES20.glEnableVertexAttribArray(vPosition);
+        int aPosition = GLES20.glGetAttribLocation(mProgramObjectId, A_POSITION);
+        mVertexFloatBuffer.position(0);
         //将坐标数据传入我们自定义的Position
-        GLES20.glVertexAttribPointer(vPosition,
+        GLES20.glVertexAttribPointer(aPosition,
                 COORDS_PER_VERTEX,
                 GLES20.GL_FLOAT,
                 false,
                 STRIDE,
                 mVertexFloatBuffer);
+        //启用我们自定义的Position
+        GLES20.glEnableVertexAttribArray(aPosition);
         //获取我们定义的Color变量的handle
         int uColor = GLES20.glGetUniformLocation(mProgramObjectId, U_COLOR);
         //将颜色数传入我们定义的Color
         GLES20.glUniform4fv(uColor, 1, TRIANGLE_COLOR, 0);
 
+        uMatrix = GLES20.glGetUniformLocation(mProgramObjectId, U_MATRIX);
+    }
+
+    //投影矩阵
+    private float[] mProjectionMatrix = new float[16];
+
+    @Override
+    public void onSurfaceChanged(GL10 gl10, int width, int height) {
+        super.onSurfaceChanged(gl10, width, height);
+        //进行缩放
+        float aspectRatio = width > height ? (float) width / (float) height : (float) height / (float) width;
+        if (width > height) {
+            //横屏
+            Matrix.orthoM(mProjectionMatrix, 0, -aspectRatio, aspectRatio, -1, 1f, -1.f, 1f);
+        } else {
+            //竖屏
+            Matrix.orthoM(mProjectionMatrix, 0, -1, 1f, -aspectRatio, aspectRatio, -1.f, 1f);
+        }
+    }
+
+    @Override
+    public void onDrawFrame(GL10 gl10) {
+        super.onDrawFrame(gl10);
+        GLES20.glUniformMatrix4fv(uMatrix, 1, false, mProjectionMatrix, 0);
         //绘制三角形
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, VERTEX_COUNT);
-        GLES20.glDisableVertexAttribArray(vPosition);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, VERTEX_COUNT);
     }
 
 }
