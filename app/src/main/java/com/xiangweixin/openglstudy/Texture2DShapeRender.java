@@ -16,15 +16,21 @@ import javax.microedition.khronos.opengles.GL10;
 
 public class Texture2DShapeRender extends ViewGLRender {
 
-    private static final float TEXTURE_COORDS[] = {
-            //X,Y,S,T
-            //XY是OpenGL坐标 ST是纹理坐标
-            //Order of coordinates: X, Y,S,T
-            -1.0f, -1.0f, 0.0f, 1.0f,
-            1.0f, -1.0f, 1.0f, 1.0f, //bottom left
-            -1.0f, 1.0f, 0.0f, 0.0f, // top right
-            1.0f, 1.0f, 1.0f, 0.0f, // bottom right
+    private static final float COORDS[] = {
+            //X,Y
+            -1.0f, -1.0f,
+            1.0f, -1.0f,
+            -1.0f, 1.0f,
+            1.0f, 1.0f,
     };
+
+    private static final float TEX_COORDS[] = {
+            0.0f, 1.0f,
+            1.0f, 1.0f,
+            0.0f, 0.0f,
+            1.0f, 0.0f,
+    };
+
     private static final int COORDS_PER_VERTEX = 2;
     private static final int COORDS_PER_ST = 2;
     private static final int TOTAL_COMPONENT_COUNT = COORDS_PER_VERTEX + COORDS_PER_ST;
@@ -32,6 +38,7 @@ public class Texture2DShapeRender extends ViewGLRender {
 
     private Context mContext;
     private FloatBuffer mVertexFloatBuffer;
+    private FloatBuffer mTexFloatBuffer;
     private int mProgramObjectId;
     private int uMatrix;
     private int uTexture;
@@ -42,11 +49,17 @@ public class Texture2DShapeRender extends ViewGLRender {
     public Texture2DShapeRender(Context context) {
         this.mContext = context;
         mVertexFloatBuffer = ByteBuffer
-                .allocateDirect(TEXTURE_COORDS.length * Constants.BYTES_PER_FLOAT)
+                .allocateDirect(COORDS.length * Constants.BYTES_PER_FLOAT)
                 .order(ByteOrder.nativeOrder())
                 .asFloatBuffer()
-                .put(TEXTURE_COORDS);
+                .put(COORDS);
+        mTexFloatBuffer = ByteBuffer
+                .allocateDirect(TEX_COORDS.length * Constants.BYTES_PER_FLOAT)
+                .order(ByteOrder.nativeOrder())
+                .asFloatBuffer()
+                .put(TEX_COORDS);
         mVertexFloatBuffer.position(0);
+        mTexFloatBuffer.position(0);
     }
 
     @Override
@@ -64,10 +77,10 @@ public class Texture2DShapeRender extends ViewGLRender {
         GLES20.glUseProgram(mProgramObjectId);
 
         int aPosition = GLES20.glGetAttribLocation(mProgramObjectId, "a_Position");
-        GLES20.glVertexAttribPointer(aPosition, COORDS_PER_VERTEX, GLES20.GL_FLOAT, false, STRIDE, mVertexFloatBuffer);
+        GLES20.glVertexAttribPointer(aPosition, COORDS_PER_VERTEX, GLES20.GL_FLOAT, false, 8, mVertexFloatBuffer);
         GLES20.glEnableVertexAttribArray(aPosition);
         int aCoordinate = GLES20.glGetAttribLocation(mProgramObjectId, "a_TextureCoordinates");
-        GLES20.glVertexAttribPointer(aCoordinate, COORDS_PER_ST, GLES20.GL_FLOAT, false, STRIDE, mVertexFloatBuffer);
+        GLES20.glVertexAttribPointer(aCoordinate, COORDS_PER_ST, GLES20.GL_FLOAT, false, 8, mTexFloatBuffer);
         GLES20.glEnableVertexAttribArray(aCoordinate);
 
         uMatrix = GLES20.glGetUniformLocation(mProgramObjectId, "u_Matrix");
@@ -100,7 +113,7 @@ public class Texture2DShapeRender extends ViewGLRender {
         //设置纹理坐标
         GLES20.glUniform1i(uTexture, 0);
 
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, TEXTURE_COORDS.length / TOTAL_COMPONENT_COUNT);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
     }
 
     //使用mip贴图生成纹理，相当于把图片复制到OpenGL里面
